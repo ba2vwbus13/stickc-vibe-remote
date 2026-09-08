@@ -1,0 +1,9 @@
+# Wi-Fi認証情報（絶対にコミットしない）
+secrets.py
+
+# 探索結果のキャッシュ（環境依存）
+.devices_cache.json
+
+__pycache__/
+*.pyc
+.DS_Store
