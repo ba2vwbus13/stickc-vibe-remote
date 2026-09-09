@@ -7,3 +7,7 @@ secrets.py
 __pycache__/
 *.pyc
 .DS_Store
+
+# 作業中のバックアップ
+*.bak_*
+*.orig

@@ -41,6 +41,12 @@ HOLD_DEFAULT_MS = 800
 HOLD_MAX_MS = 2000     # 1回の延命で許す最大時間
 POLL_MS = 20           # accept待ちの粒度＝ウォッチドッグの精度
 
+# M5Go からの探索に応答するためのUDPポート。
+# M5Go が "YUISHIRUBE?" をブロードキャストし、各StickCが自分のMACとIPを返す。
+# これにより M5Go 側にIPを書かずに済み、DHCPでIPが変わっても追従できる。
+DISCOVERY_PORT = 9999
+DISCOVERY_QUERY = b"YUISHIRUBE?"
+
 # Plus2 は GPIO4 をHIGHに保たないとバッテリー駆動時に電源が落ちます
 try:
     Pin(4, Pin.OUT).value(1)
@@ -161,8 +167,15 @@ def main():
 
     # accept でずっと寝ていると /hold のウォッチドッグを見に行けないので、
     # poll で POLL_MS ごとに起きて期限切れを確認する。
+    # 探索応答用のUDPソケット。TCP(振動指示)と同じpollループで待つ。
+    udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    udp.bind(("0.0.0.0", DISCOVERY_PORT))
+    print("探索応答 udp", DISCOVERY_PORT)
+
     poller = select.poll()
     poller.register(srv, select.POLLIN)
+    poller.register(udp, select.POLLIN)
 
     while True:
         conn = None
@@ -171,6 +184,19 @@ def main():
             hold_watchdog()
             if not events:
                 continue
+
+            # UDP探索の問い合わせなら、自分のMACとIPを返して次へ。
+            # 振動はさせない（探索のたびに震えては困るため）。
+            if any(ev[0] is udp for ev in events):
+                try:
+                    data, sender = udp.recvfrom(64)
+                    if data.strip() == DISCOVERY_QUERY:
+                        udp.sendto(b"YUISHIRUBE %s %s" % (MY_MAC, ip), sender)
+                        print("探索に応答 ->", sender[0])
+                except Exception as e:
+                    print("探索応答エラー:", e)
+                if not any(ev[0] is srv for ev in events):
+                    continue
 
             conn, addr = srv.accept()
             req = conn.recv(512).decode("utf-8", "replace")
