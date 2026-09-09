@@ -99,8 +99,26 @@ python3 deploy.py
 
 ### 3-3. M5Go に書き込む
 
-`deploy_tof.py` 相当の手順で `tof_server.py` を `/flash/main.py` に書き込み、
-`boot_option=0` を設定する。
+USBで接続して実行する。ToFユニットは **Port A**（本体上部の赤いGroveコネクタ）へ。
+
+```
+python3 deploy_tof.py
+```
+
+`tof_server.py` と `secrets.py` を書き込み、`boot_option=0` を設定して再起動し、
+起動ログを表示する。以後は電源投入だけで動く。
+
+書き込まずに動作だけ試すなら `--run`（20秒間RAM実行）。
+
+**複数のM5Stack機器が繋がっていても自動でM5Goを選ぶ。**
+各ポートの `os.uname().machine` を読んで判別するため、
+**判別の過程で他の機器（StickC等）もリセットされる**点に注意。
+動作中の機器を止めたくないときは `--port` で明示指定する。
+
+```
+python3 deploy_tof.py --list                        # 接続機器を判別して一覧
+python3 deploy_tof.py --port /dev/cu.usbserial-XXXX # ポート指定
+```
 
 ---
 
@@ -560,7 +578,8 @@ MAC が表示されれば MicroPython が動いている。
 | `devices.py` | 台帳（PC側のみ）。MAC→名前。編集しても再書き込み不要 |
 | `vibe.py` | PC側。探索・キャッシュ・振動指示 |
 | `vibe_hold.py` | PC側。キーを押している間だけ震わせる |
-| `deploy.py` | `vibe_server.py` を StickC に書き込む |
+| `deploy.py` | `vibe_server.py` を **StickC** に書き込む |
+| `deploy_tof.py` | `tof_server.py` を **M5Go** に書き込む |
 | `find_vibe_pin.py` | 振動ピン特定用（記録。通常は不要） |
 | `secrets.py` | Wi-Fi認証情報。**Git除外**。`secrets.py.example` からコピーして作る |
 | `.devices_cache.json` | 探索結果のキャッシュ（自動生成、Git除外） |
